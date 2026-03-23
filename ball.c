@@ -101,18 +101,18 @@ int maps[NUM_MAPS][ROWS][COLS] = {
 
 // ── JTAG UART ────────────────────────────────────────────
 
-void jtag_putchar(char c) {
+// NON-BLOCKING send — only writes if FIFO has space, skips otherwise
+void jtag_putchar_nb(char c) {
     volatile int *uart = (int *)JTAG_UART_BASE;
-    // wait until transmit FIFO has space
-    while (!(*(uart + 1) & 0xFFFF0000));
-    *uart = c;
+    if (*(uart + 1) & 0xFFFF0000)   // space available?
+        *uart = c;
 }
 
-void jtag_putint(int val) {
-    jtag_putchar((val >> 24) & 0xFF);
-    jtag_putchar((val >> 16) & 0xFF);
-    jtag_putchar((val >>  8) & 0xFF);
-    jtag_putchar((val      ) & 0xFF);
+void jtag_putint_nb(int val) {
+    jtag_putchar_nb((val >> 24) & 0xFF);
+    jtag_putchar_nb((val >> 16) & 0xFF);
+    jtag_putchar_nb((val >>  8) & 0xFF);
+    jtag_putchar_nb((val      ) & 0xFF);
 }
 
 int jtag_getchar() {
@@ -122,15 +122,14 @@ int jtag_getchar() {
     return -1;
 }
 
-// send: start marker + px + py + target_col + target_row + map
-// = 1 + 20 bytes = 21 bytes total
+// NON-BLOCKING send game state — never stalls the main loop
 void send_game_state(int px, int py, int tcol, int trow, int cm) {
-    jtag_putchar(0xFF);
-    jtag_putint(px);
-    jtag_putint(py);
-    jtag_putint(tcol);
-    jtag_putint(trow);
-    jtag_putint(cm);
+    jtag_putchar_nb(0xFF);
+    jtag_putint_nb(px);
+    jtag_putint_nb(py);
+    jtag_putint_nb(tcol);
+    jtag_putint_nb(trow);
+    jtag_putint_nb(cm);
 }
 
 // returns 0-3 for a valid move, -1 if nothing received
@@ -367,8 +366,8 @@ int main(void) {
 
     while (1) {
 
-        // ── send game state to Python agent ──
-        send_game_state(px, py, target_col, target_row, cm);
+        // ── send agent's position to Python (non-blocking) ──
+        send_game_state(agent_px, agent_py, target_col, target_row, cm);
 
         // ── receive and apply agent move ──
         int agent_move = recv_agent_move();
