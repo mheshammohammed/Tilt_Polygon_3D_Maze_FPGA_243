@@ -1,5 +1,5 @@
-// accel_dot_fixed.c
-// Stable version: no drift, proper calibration, direct tilt control
+// accel_step1_raw.c
+// FULL FILE — raw accelerometer test
 
 #include <stdlib.h>
 
@@ -20,9 +20,9 @@ volatile int *jp1_dir  = (volatile int *)0xFF200064;
 #define REG_PWR_MGMT_1   0x6B
 #define REG_ACCEL_XOUT_H 0x3B
 
-// ─── I2C ─────────────────────────────────────────────
+// ─── I2C ─────────────────────────────
 
-void i2c_delay() { volatile int i; for (i = 0; i < 500; i++); }
+void i2c_delay() { for (volatile int i = 0; i < 500; i++); }
 
 void scl_high() { *jp1_dir &= ~(1 << SCL_BIT); i2c_delay(); }
 void scl_low()  { *jp1_data &= ~(1 << SCL_BIT); *jp1_dir |= (1 << SCL_BIT); i2c_delay(); }
@@ -39,15 +39,12 @@ int sda_read() {
 void i2c_start() { sda_high(); scl_high(); sda_low(); scl_low(); }
 void i2c_stop()  { sda_low();  scl_high(); sda_high(); }
 
-int i2c_send_byte(unsigned char byte) {
+void i2c_send_byte(unsigned char byte) {
     for (int i = 7; i >= 0; i--) {
         if ((byte >> i) & 1) sda_high(); else sda_low();
         scl_high(); scl_low();
     }
-    sda_high(); scl_high();
-    int nack = sda_read();
-    scl_low();
-    return nack;
+    sda_high(); scl_high(); sda_read(); scl_low();
 }
 
 unsigned char i2c_recv_byte(int ack) {
@@ -63,7 +60,7 @@ unsigned char i2c_recv_byte(int ack) {
     return byte;
 }
 
-// ─── MPU ─────────────────────────────────────────────
+// ─── MPU ─────────────────────────────
 
 void mpu_write_reg(unsigned char reg, unsigned char val) {
     i2c_start();
@@ -76,7 +73,6 @@ void mpu_write_reg(unsigned char reg, unsigned char val) {
 void mpu_init() {
     *jp1_dir &= ~((1 << SCL_BIT) | (1 << SDA_BIT));
     mpu_write_reg(REG_PWR_MGMT_1, 0x00);
-
     for (volatile int i = 0; i < 5000000; i++);
 }
 
@@ -99,77 +95,54 @@ void mpu_read_accel(short *ax, short *ay) {
     *ay = (short)((yh << 8) | yl);
 }
 
-// ─── VGA ─────────────────────────────────────────────
+// ─── VGA ─────────────────────────────
 
-void plot_pixel(int x, int y, short color) {
-    if (x < 0 || x >= SCREEN_W || y < 0 || y >= SCREEN_H) return;
-    Buffer1[y][x] = color;
+void plot_pixel(int x, int y, short c){
+    if(x>=0 && x<320 && y>=0 && y<240)
+        Buffer1[y][x]=c;
 }
 
-void fill_circle(int cx, int cy, int r, short color) {
-    for (int dy = -r; dy <= r; dy++)
-        for (int dx = -r; dx <= r; dx++)
-            if (dx*dx + dy*dy <= r*r)
-                plot_pixel(cx+dx, cy+dy, color);
+void fill_circle(int cx,int cy,int r,short c){
+    for(int dy=-r;dy<=r;dy++)
+        for(int dx=-r;dx<=r;dx++)
+            if(dx*dx+dy*dy<=r*r)
+                plot_pixel(cx+dx,cy+dy,c);
 }
 
-void clear_screen() {
-    for (int y = 0; y < SCREEN_H; y++)
-        for (int x = 0; x < SCREEN_W; x++)
-            Buffer1[y][x] = BLACK;
+void clear_screen(){
+    for(int y=0;y<240;y++)
+        for(int x=0;x<320;x++)
+            Buffer1[y][x]=BLACK;
 }
 
-void wait_for_vsync() {
-    volatile int *ctrl = (volatile int *)0xFF203020;
-    *ctrl = 1;
-    while ((*(ctrl + 3) & 0x01) != 0);
+void wait_for_vsync(){
+    volatile int *ctrl=(int*)0xFF203020;
+    *ctrl=1;
+    while((*(ctrl+3)&1));
 }
 
-// ─── MAIN ────────────────────────────────────────────
+// ─── MAIN ────────────────────────────
 
-int main(void) {
-    volatile int *pixel_ctrl = (volatile int *)0xFF203020;
-    *(pixel_ctrl + 1) = (int)Buffer1;
-    *pixel_ctrl = 1;
-    while ((*(pixel_ctrl + 3) & 0x01) != 0);
-    *(pixel_ctrl + 1) = (int)Buffer1;
+int main(){
+    volatile int *pixel_ctrl=(int*)0xFF203020;
+
+    *(pixel_ctrl+1)=(int)Buffer1;
+    *pixel_ctrl=1;
+    while((*(pixel_ctrl+3)&1));
+    *(pixel_ctrl+1)=(int)Buffer1;
 
     clear_screen();
     mpu_init();
 
-    // ✅ STRONG CALIBRATION (average many samples)
-    int sum_x = 0, sum_y = 0;
-    for (int i = 0; i < 200; i++) {
-        short tx, ty;
-        mpu_read_accel(&tx, &ty);
-        sum_x += tx;
-        sum_y += ty;
-    }
-    short cal_x = sum_x / 200;
-    short cal_y = sum_y / 200;
+    int old_x=160, old_y=120;
 
-    int old_x = 160, old_y = 120;
-
-    while (1) {
+    while(1){
         short ax, ay;
         mpu_read_accel(&ax, &ay);
 
-        int ix = ax - cal_x;
-        int iy = ay - cal_y;
-
-        // ✅ DEADZONE (prevents drift)
-        if (ix < 300 && ix > -300) ix = 0;
-        if (iy < 300 && iy > -300) iy = 0;
-
-        // ✅ DIRECT CONTROL (NO integration → no drifting)
-        int dot_x = 160 + (ix / 256);
-        int dot_y = 120 - (iy / 256);
-
-        // clamp
-        if (dot_x < 8) dot_x = 8;
-        if (dot_x > 311) dot_x = 311;
-        if (dot_y < 8) dot_y = 8;
-        if (dot_y > 231) dot_y = 231;
+        // RAW movement
+        int dot_x = 160 + ax / 128;
+        int dot_y = 120 - ay / 128;
 
         fill_circle(old_x, old_y, 8, BLACK);
         fill_circle(dot_x, dot_y, 8, CYAN);
