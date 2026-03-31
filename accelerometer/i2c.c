@@ -1,206 +1,141 @@
-// accel_dot.c
-//
-// BARE MINIMUM version — just wake the chip and read ax/ay.
-// No LPF, no offsets, no angle math.
-// If tilt doesn't move the dot with this, it's a wiring/I2C issue.
+#include <stdint.h>
 
-#include <stdlib.h>
+// ── Hardware ────────────────────────────────────────────────────────────────
+typedef struct { volatile unsigned int DDR; volatile unsigned int DATA; } GPIO_t;
 
-#define SCREEN_W  320
-#define SCREEN_H  240
-#define BLACK     0x0000
-#define CYAN      0x07FF
+#define GPIO_BASE  ((GPIO_t *)0xFF200000)   // adjust to your Platform Designer addr
+#define SCL_PIN    0
+#define SDA_PIN    1
 
-short int Buffer1[240][512];
+// ── MPU-6050 ─────────────────────────────────────────────────────────────────
+#define MPU_ADDR      0x68   // AD0 low = 0x68, AD0 high = 0x69
+#define REG_PWR_MGMT  0x6B
+#define REG_ACCEL_X_H 0x3B   // X,Y,Z high/low follow sequentially
 
-volatile int *jp1_data = (volatile int *)0xFF200060;
-volatile int *jp1_dir  = (volatile int *)0xFF200064;
+// ── I2C primitives ──────────────────────────────────────────────────────────
 
-#define SCL_BIT  0
-#define SDA_BIT  1
+// Release a line high (open-drain: stop driving, let pull-up do the work)
+void sda_high(GPIO_t *g){ pinMode(g, SDA_PIN, 0); }   // input = released
+void sda_low (GPIO_t *g){ pinMode(g, SDA_PIN, 1); digitalWrite(g, SDA_PIN, 0); }
+void scl_high(GPIO_t *g){ pinMode(g, SCL_PIN, 1); digitalWrite(g, SCL_PIN, 1); }
+void scl_low (GPIO_t *g){ pinMode(g, SCL_PIN, 1); digitalWrite(g, SCL_PIN, 0); }
+int  sda_read(GPIO_t *g){ pinMode(g, SDA_PIN, 0); return digitalRead(g, SDA_PIN); }
 
-#define MPU_ADDR         0x68
-#define REG_PWR_MGMT_1   0x6B
-#define REG_ACCEL_XOUT_H 0x3B
-
-// ─── I2C ─────────────────────────────────────────────────────────────────────
-
-void i2c_delay() { volatile int i; for (i = 0; i < 100; i++); }
-
-void scl_high() { *jp1_dir &= ~(1 << SCL_BIT); i2c_delay(); }
-void scl_low()  { *jp1_data &= ~(1 << SCL_BIT); *jp1_dir |= (1 << SCL_BIT); i2c_delay(); }
-void sda_high() { *jp1_dir &= ~(1 << SDA_BIT); i2c_delay(); }
-void sda_low()  { *jp1_data &= ~(1 << SDA_BIT); *jp1_dir |= (1 << SDA_BIT); i2c_delay(); }
-
-int sda_read() {
-    *jp1_dir &= ~(1 << SDA_BIT);
-    i2c_delay();
-    return (*jp1_data >> SDA_BIT) & 1;
+// START: SDA falls while SCL is high
+void i2c_start(GPIO_t *g){
+    sda_high(g); scl_high(g); delay(5);
+    sda_low(g);              delay(5);
+    scl_low(g);              delay(5);
 }
 
-void i2c_start() { sda_high(); scl_high(); sda_low(); scl_low(); }
-void i2c_stop()  { sda_low();  scl_high(); sda_high(); }
-
-int i2c_send_byte(unsigned char byte) {
-    int i;
-    for (i = 7; i >= 0; i--) {
-        if ((byte >> i) & 1) sda_high(); else sda_low();
-        scl_high(); scl_low();
-    }
-    sda_high(); scl_high();
-    int nack = sda_read();
-    scl_low();
-    return nack;
+// STOP: SDA rises while SCL is high
+void i2c_stop(GPIO_t *g){
+    sda_low(g);  scl_high(g); delay(5);
+    sda_high(g);              delay(5);
 }
 
-unsigned char i2c_recv_byte(int ack) {
-    unsigned char byte = 0;
-    int i;
-    sda_high();
-    for (i = 7; i >= 0; i--) {
-        scl_high();
-        if (sda_read()) byte |= (1 << i);
-        scl_low();
+// Send one byte, return 0 if ACK received from slave
+int i2c_write_byte(GPIO_t *g, uint8_t byte){
+    for(int i = 7; i >= 0; i--){
+        if((byte >> i) & 1) sda_high(g);
+        else                sda_low(g);
+        delay(2);
+        scl_high(g); delay(5);
+        scl_low(g);  delay(2);
     }
-    if (ack) sda_low(); else sda_high();
-    scl_high(); scl_low(); sda_high();
+    // Read ACK bit (slave pulls SDA low to ACK)
+    sda_high(g);          // release SDA
+    scl_high(g); delay(5);
+    int nack = sda_read(g);
+    scl_low(g);  delay(2);
+    return nack;           // 0 = ACK ✓, 1 = NACK ✗
+}
+
+// Read one byte, send ACK if ack=1, NACK if ack=0 (last byte)
+uint8_t i2c_read_byte(GPIO_t *g, int ack){
+    uint8_t byte = 0;
+    sda_high(g);  // release SDA for slave to drive
+    for(int i = 7; i >= 0; i--){
+        scl_high(g); delay(5);
+        if(sda_read(g)) byte |= (1 << i);
+        scl_low(g);  delay(5);
+    }
+    // Send ACK/NACK
+    if(ack) sda_low(g);
+    else    sda_high(g);
+    scl_high(g); delay(5);
+    scl_low(g);  delay(2);
+    sda_high(g);
     return byte;
 }
 
-// ─── MPU ─────────────────────────────────────────────────────────────────────
+// ── MPU-6050 helpers ────────────────────────────────────────────────────────
 
-void mpu_write_reg(unsigned char reg, unsigned char val) {
-    i2c_start();
-    i2c_send_byte(MPU_ADDR << 1);
-    i2c_send_byte(reg);
-    i2c_send_byte(val);
-    i2c_stop();
+void mpu_write_reg(GPIO_t *g, uint8_t reg, uint8_t val){
+    i2c_start(g);
+    i2c_write_byte(g, MPU_ADDR << 1);   // address + write bit
+    i2c_write_byte(g, reg);
+    i2c_write_byte(g, val);
+    i2c_stop(g);
 }
 
-void mpu_init() {
-    // release pins
-    *jp1_dir &= ~((1 << SCL_BIT) | (1 << SDA_BIT));
-
-    // just wake the chip — nothing else
-    mpu_write_reg(REG_PWR_MGMT_1, 0x00);
-
-    // long wait to make sure chip is fully awake
-    volatile int i;
-    for (i = 0; i < 5000000; i++);
+// Read `len` consecutive bytes starting at `reg` into `buf`
+void mpu_read_regs(GPIO_t *g, uint8_t reg, uint8_t *buf, int len){
+    i2c_start(g);
+    i2c_write_byte(g, MPU_ADDR << 1);       // write phase: set register pointer
+    i2c_write_byte(g, reg);
+    i2c_start(g);                            // repeated START
+    i2c_write_byte(g, (MPU_ADDR << 1) | 1); // read phase
+    for(int i = 0; i < len; i++)
+        buf[i] = i2c_read_byte(g, i < len-1); // ACK all but last
+    i2c_stop(g);
 }
 
-// burst read XH XL YH YL in one transaction
-void mpu_read_accel(short *ax, short *ay) {
-    i2c_start();
-    i2c_send_byte(MPU_ADDR << 1);
-    i2c_send_byte(REG_ACCEL_XOUT_H);
-    i2c_start();
-    i2c_send_byte((MPU_ADDR << 1) | 1);
-    unsigned char xh = i2c_recv_byte(1);
-    unsigned char xl = i2c_recv_byte(1);
-    unsigned char yh = i2c_recv_byte(1);
-    unsigned char yl = i2c_recv_byte(0);
-    i2c_stop();
-    *ax = (short)((xh << 8) | xl);
-    *ay = (short)((yh << 8) | yl);
+void mpu_init(GPIO_t *g){
+    mpu_write_reg(g, REG_PWR_MGMT, 0x00);  // wake up (clears sleep bit)
 }
 
-// ─── VGA ─────────────────────────────────────────────────────────────────────
+// Returns raw 16-bit accel values (±2g range by default)
+typedef struct { int16_t x, y, z; } Accel;
 
-void plot_pixel(int x, int y, short color) {
-    if (x < 0 || x >= SCREEN_W || y < 0 || y >= SCREEN_H) return;
-    Buffer1[y][x] = color;
+Accel mpu_read_accel(GPIO_t *g){
+    uint8_t buf[6];
+    mpu_read_regs(g, REG_ACCEL_X_H, buf, 6);
+    Accel a;
+    a.x = (int16_t)((buf[0] << 8) | buf[1]);
+    a.y = (int16_t)((buf[2] << 8) | buf[3]);
+    a.z = (int16_t)((buf[4] << 8) | buf[5]);
+    return a;
 }
 
-void fill_circle(int cx, int cy, int r, short color) {
-    int dx, dy;
-    for (dy = -r; dy <= r; dy++)
-        for (dx = -r; dx <= r; dx++)
-            if (dx*dx + dy*dy <= r*r)
-                plot_pixel(cx+dx, cy+dy, color);
+// ── Dot position from tilt ──────────────────────────────────────────────────
+// VGA 640x480, dot starts centre.  Tune SENSITIVITY to taste.
+#define VGA_W 640
+#define VGA_H 480
+#define SENSITIVITY 4000   // raw LSBs per full screen half-width
+
+void accel_to_dot(Accel a, int *dot_x, int *dot_y){
+    // X tilt  → horizontal,  Y tilt → vertical
+    // Clamp to [0, VGA_W/H - 1]
+    int x = (VGA_W/2) + (int)(a.x * (VGA_W/2)) / SENSITIVITY;
+    int y = (VGA_H/2) - (int)(a.y * (VGA_H/2)) / SENSITIVITY; // flip Y axis
+    if(x < 0) x = 0;  if(x >= VGA_W) x = VGA_W-1;
+    if(y < 0) y = 0;  if(y >= VGA_H) y = VGA_H-1;
+    *dot_x = x;
+    *dot_y = y;
 }
 
-void clear_screen() {
-    int x, y;
-    for (y = 0; y < SCREEN_H; y++)
-        for (x = 0; x < SCREEN_W; x++)
-            Buffer1[y][x] = BLACK;
-}
+// ── Main loop ───────────────────────────────────────────────────────────────
+int main(void){
+    GPIO_t *gpio = GPIO_BASE;
+    mpu_init(gpio);
 
-void wait_for_vsync() {
-    volatile int *ctrl = (volatile int *)0xFF203020;
-    *ctrl = 1;
-    while ((*(ctrl + 3) & 0x01) != 0);
-}
+    int dot_x = VGA_W/2, dot_y = VGA_H/2;
 
-// ─── Main ────────────────────────────────────────────────────────────────────
-
-int main(void) {
-    volatile int *pixel_ctrl = (volatile int *)0xFF203020;
-    *(pixel_ctrl + 1) = (int)Buffer1;
-    *pixel_ctrl = 1;
-    while ((*(pixel_ctrl + 3) & 0x01) != 0);
-    *(pixel_ctrl + 1) = (int)Buffer1;
-
-    clear_screen();
-    mpu_init();
-
-    // take a calibration snapshot while flat at startup
-    // this captures whatever offset the chip has at rest
-    // and subtracts it every frame so flat = no movement
-    short cal_x, cal_y;
-    mpu_read_accel(&cal_x, &cal_y);
-
-    int pos_x = 160 * 16;
-    int pos_y = 120 * 16;
-    int vel_x = 0;
-    int vel_y = 0;
-    int old_x = 160, old_y = 120;
-    short ax, ay;
-
-    while (1) {
-        mpu_read_accel(&ax, &ay);
-
-        // subtract the at-rest calibration reading
-        // so whatever the chip reads when flat = 0
-        // and any tilt from that position drives movement
-        int ix = (int)ax - (int)cal_x;
-        int iy = (int)ay - (int)cal_y;
-
-        // tilt drives velocity
-        vel_x += ix / 32;
-        vel_y -= iy / 32;
-
-        // friction
-        vel_x = (vel_x * 15) / 16;
-        vel_y = (vel_y * 15) / 16;
-
-        // cap speed
-        if (vel_x >  64) vel_x =  64;
-        if (vel_x < -64) vel_x = -64;
-        if (vel_y >  64) vel_y =  64;
-        if (vel_y < -64) vel_y = -64;
-
-        pos_x += vel_x;
-        pos_y += vel_y;
-
-        // bounce
-        if (pos_x < 8*16)   { pos_x = 8*16;   vel_x = -vel_x / 2; }
-        if (pos_x > 311*16) { pos_x = 311*16;  vel_x = -vel_x / 2; }
-        if (pos_y < 8*16)   { pos_y = 8*16;    vel_y = -vel_y / 2; }
-        if (pos_y > 231*16) { pos_y = 231*16;  vel_y = -vel_y / 2; }
-
-        int dot_x = pos_x / 16;
-        int dot_y = pos_y / 16;
-
-        fill_circle(old_x, old_y, 8, BLACK);
-        fill_circle(dot_x, dot_y, 8, CYAN);
-
-        old_x = dot_x;
-        old_y = dot_y;
-
-        wait_for_vsync();
+    while(1){
+        Accel a = mpu_read_accel(gpio);
+        accel_to_dot(a, &dot_x, &dot_y);
+        vga_draw_dot(dot_x, dot_y);   // your existing VGA function
+        delay(10000);                  // ~10 ms poll rate
     }
-
-    return 0;
 }
