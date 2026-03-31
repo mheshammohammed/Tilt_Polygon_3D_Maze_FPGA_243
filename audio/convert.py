@@ -32,7 +32,6 @@ def convert(raw_filename, array_name, header_filename):
 
     print(f'Done: {header_filename} — {len(samples)} samples ({len(samples)*4//1024} KB)')
 
-convert('target.raw', 'snd_target', 'snd_target.h')
-convert('wall.raw',   'snd_wall',   'snd_wall.h')
-convert('reset.raw',  'snd_reset',  'snd_reset.h')
-convert('agent.raw',  'snd_agent',  'snd_agent.h')
+convert('game_over.raw', 'snd_game_over', 'snd_game_over.h')
+convert('wall.raw',      'snd_wall',      'snd_wall.h')
+convert('target.raw',    'snd_target',    'snd_target.h')
