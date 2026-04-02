@@ -1363,6 +1363,7 @@ void draw_map(int m, char tilt) {
         for (int x = 0; x < SCREEN_W; x++)
             Buffer1[y][x] = BLACK;
 	
+            
 	plot_logo();
 	plot_scoreboard();
 	plot_score(playerScore, computerScore);
