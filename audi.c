@@ -315,7 +315,7 @@ int maps[NUM_MAPS][ROWS][COLS] = {
 };
 
 // ────────────────────────────────────────────────────────────────────────────
-// pixel drawing primitives
+// pixel drawing 
 // ────────────────────────────────────────────────────────────────────────────
 void plot_pixel(int x, int y, short int color) {
     if (x<0||x>319||y<0||y>239) return;
@@ -920,26 +920,15 @@ void draw_portal(int col, int row, short color) {
     int cy = projectPoint(x, y, z).y;
 
     if (color == BLACK) {
-        // erase: black out the sprite area
-        int x0 = cx - PORTAL_W / 2;
-        int y0 = cy - PORTAL_H / 2;
-        for (int dy = 0; dy < PORTAL_H; dy++)
-            for (int dx = 0; dx < PORTAL_W; dx++)
-                plot_pixel(x0 + dx, y0 + dy, BLACK);
+        int r = PORTAL_RADIUS + 2;
+        for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++)
+                plot_pixel(cx + dx, cy + dy, BLACK);
         return;
     }
 
-    // draw current animation frame
-    unsigned short *frame = teleport_frames[portal_frame];
-    int x0 = cx - PORTAL_W / 2;
-    int y0 = cy - PORTAL_H / 2;
-    for (int dy = 0; dy < PORTAL_H; dy++) {
-        for (int dx = 0; dx < PORTAL_W; dx++) {
-            unsigned short px_color = frame[dy * PORTAL_W + dx];
-            if (px_color != 0x0000)   // skip transparent pixels
-                plot_pixel(x0 + dx, y0 + dy, px_color);
-        }
-    }
+    draw_circle(cx, cy, PORTAL_RADIUS,     color);
+    draw_circle(cx, cy, PORTAL_RADIUS - 1, color);  // double outline so it's visible
 }
 
 void draw_portals(void) {
@@ -955,22 +944,42 @@ void erase_portals(void) {
 }
 
 void spawn_portal(int m, int px, int py) {
+
     int pcol = px_to_col(px);
     int prow = py_to_row(py);
+
     int ca, ra, cb, rb;
+
+    // portal A
     do {
         ca = 1 + rand() % (COLS - 2);
         ra = 1 + rand() % (ROWS - 2);
-    } while (maps[m][ra][ca] != 0 || (ca == pcol && ra == prow));
+
+    } while (
+        maps[m][ra][ca] != 0 ||                 // wall
+        (ca == pcol && ra == prow) ||           // player
+        (ca == target_col && ra == target_row)  // target
+    );
+
+    // portal B
     do {
         cb = 1 + rand() % (COLS - 2);
         rb = 1 + rand() % (ROWS - 2);
-    } while (maps[m][rb][cb] != 0 || (cb == ca && rb == ra) || (cb == pcol && rb == prow));
+
+    } 
+    while (
+        maps[m][rb][cb] != 0 ||                 // wall
+        (cb == pcol && rb == prow) ||           // player
+        (cb == ca && rb == ra) ||               // same as A
+        (cb == target_col && rb == target_row)  // target
+    );
 
     portal.col_a = ca; portal.row_a = ra;
     portal.col_b = cb; portal.row_b = rb;
+
     portal.active = 1;
     portal.life = PORTAL_LIFETIME;
+
     draw_portals();
 }
 
