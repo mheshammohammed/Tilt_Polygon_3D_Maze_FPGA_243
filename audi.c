@@ -1538,6 +1538,8 @@ void set_mode(int new_mode, int *cm, int *px, int *py) {
 // collision / detection
 // ────────────────────────────────────────────────────────────────────────────
 
+#define DAMP_VALUE 2
+
 // check all 4 corners of the 8x8 ball bounding box for wall overlap
 int hits_wall(int m, int px, int py) {
 	
@@ -1551,10 +1553,10 @@ int hits_wall(int m, int px, int py) {
     int cy = projectPoint(px, py, pz).y;
 
     //This helps prevent the ball from getting stuck when tilt changes
-    int xdamp = 1;
-    int ydamp = 1;
-    if ((prev_tilt == 'r')||(prev_tilt == 'l')) xdamp--;
-    if ((prev_tilt == 'u')||(prev_tilt == 'd')) ydamp--;
+    int xdamp = DAMP_VALUE;
+    int ydamp = DAMP_VALUE;
+    if ((prev_tilt == 'r')||(prev_tilt == 'l')) xdamp-=DAMP_VALUE;
+    if ((prev_tilt == 'u')||(prev_tilt == 'd')) ydamp-=DAMP_VALUE;
 	
 	//obtain 3d bounds
 	int r = BALL_SIZE/2+1;
