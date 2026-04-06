@@ -922,16 +922,16 @@ void drawBox(int x, int y, int z, short color) {
     update_audio();
     if (y<0)
         quad(box.btl.x,box.btl.y, box.btr.x,box.btr.y,
-             box.ftr.x,box.ftr.y, box.ftl.x,box.ftl.y, RED);
+             box.ftr.x,box.ftr.y, box.ftl.x,box.ftl.y, COL_WALL_CORE); //bottom 
     if (x>0)
         quad(box.fbl.x,box.fbl.y, box.bbl.x,box.bbl.y,
-             box.btl.x,box.btl.y, box.ftl.x,box.ftl.y, GREEN);
+             box.btl.x,box.btl.y, box.ftl.x,box.ftl.y, COL_WALL_CORE); //left
     if (x<0)
         quad(box.ftr.x,box.ftr.y, box.btr.x,box.btr.y,
-             box.bbr.x,box.bbr.y, box.fbr.x,box.fbr.y, BLUE);
+             box.bbr.x,box.bbr.y, box.fbr.x,box.fbr.y, COL_WALL_CORE); //right
     if (y>0)
         quad(box.fbl.x,box.fbl.y, box.fbr.x,box.fbr.y,
-             box.bbr.x,box.bbr.y, box.bbl.x,box.bbl.y, ORANGE);
+             box.bbr.x,box.bbr.y, box.bbl.x,box.bbl.y, COL_WALL_CORE); //up
 
     // top/front face — always white
     update_audio();
@@ -1538,7 +1538,7 @@ void set_mode(int new_mode, int *cm, int *px, int *py) {
 // collision / detection
 // ────────────────────────────────────────────────────────────────────────────
 
-#define DAMP_VALUE 1
+#define DAMP_VALUE 2
 
 // check all 4 corners of the 8x8 ball bounding box for wall overlap
 int hits_wall(int m, int px, int py) {
@@ -1557,10 +1557,10 @@ int hits_wall(int m, int px, int py) {
     int udamp = DAMP_VALUE;
     int ddamp = DAMP_VALUE;
     int ldamp = DAMP_VALUE;
-    if (prev_tilt == 'r'){rdamp = 0;}
-    else if (prev_tilt == 'l') {ldamp = 0;}
-    else if (prev_tilt == 'u') {udamp = 0;}
-    else if (prev_tilt == 's') {ddamp = 0;}
+    if (prev_tilt == 'r'){rdamp = 0; ldamp++;}
+    else if (prev_tilt == 'l') {ldamp = 0; rdamp++;}
+    else if (prev_tilt == 'u') {udamp = 0; ddamp++;}
+    else if (prev_tilt == 'd') {ddamp = 0; udamp++;}
 	
 	//obtain 3d bounds
 	int r = BALL_SIZE/2+1;
