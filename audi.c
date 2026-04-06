@@ -2194,7 +2194,6 @@ int main(void) {
 					
 					if (prev_tilt != 'l') {
 						prev_tilt = 'l';
-						draw_map(cm, 'l');
 						ballSpeed = 0;
 					}
 				} 
@@ -2203,7 +2202,6 @@ int main(void) {
 					  
 					if (prev_tilt != 'r') {
 						prev_tilt = 'r';
-						draw_map(cm, 'r');
 						ballSpeed = 0; 
 					}
 				}
@@ -2211,7 +2209,6 @@ int main(void) {
 		
 					if (prev_tilt != 'u') {
 						prev_tilt = 'u';
-						draw_map(cm, 'u');
 						ballSpeed = 0;
 					}
 				}
@@ -2219,7 +2216,6 @@ int main(void) {
 					
 					if (prev_tilt != 'd') {
 						prev_tilt = 'd';
-						draw_map(cm, 'd');
 						ballSpeed = 0;
 					}
 				}
@@ -2229,7 +2225,6 @@ int main(void) {
                 if (b==0x1D) { // W
 					if (prev_tilt != 'u'){
 						prev_tilt = 'u';
-						draw_map(cm, 'u');
 						ballSpeed = 0;
 					}
 				} 
@@ -2237,13 +2232,11 @@ int main(void) {
 					if (prev_tilt != 'd'){
 						prev_tilt = 'd';
 						ballSpeed = 0;
-						draw_map(cm, 'd');
 					}
 				}  
                 else if (b==0x1C) {//A
 					if (prev_tilt != 'l'){
 						prev_tilt = 'l';
-						draw_map(cm, 'l');
 						ballSpeed=0;
 					}
 				}
@@ -2251,13 +2244,19 @@ int main(void) {
 					
 					if (prev_tilt != 'r') {
 						prev_tilt = 'r';
-						draw_map(cm, 'r');
 						ballSpeed=0;
 					}
 				} 
             }
         }
-        
+
+        draw_map(cm, prev_tilt);
+        if (game_mode != MODE_FREE)
+            draw_ball(agent_px, agent_py, COL_AGENT, prev_tilt);
+        draw_ball(px, py, COL_PLAYER, prev_tilt);
+
+
+
         *(pixel_ctrl + 1) = (int)back_buffer;
         *pixel_ctrl = 1;
         wait_for_vsync();
