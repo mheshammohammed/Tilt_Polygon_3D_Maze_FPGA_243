@@ -2257,16 +2257,11 @@ int main(void) {
 				} 
             }
         }
+        
+        *(pixel_ctrl + 1) = (int)back_buffer;
+        *pixel_ctrl = 1;
         wait_for_vsync();
-
-        // Flip which buffer we draw to next
-        if (back_buffer == Buffer1) {
-            back_buffer = Buffer2;
-            *(pixel_ctrl + 1) = (int)Buffer2;
-        } else {
-            back_buffer = Buffer1;
-            *(pixel_ctrl + 1) = (int)Buffer1;
-        }
+        back_buffer = (back_buffer == Buffer1) ? Buffer2 : Buffer1;
     }
     return 0;
 }
