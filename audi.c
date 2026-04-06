@@ -922,16 +922,16 @@ void drawBox(int x, int y, int z, short color) {
     update_audio();
     if (y<0)
         quad(box.btl.x,box.btl.y, box.btr.x,box.btr.y,
-             box.ftr.x,box.ftr.y, box.ftl.x,box.ftl.y, GREEN); //bottom 
+             box.ftr.x,box.ftr.y, box.ftl.x,box.ftl.y, BLUE); //bottom 
     if (x>0)
         quad(box.fbl.x,box.fbl.y, box.bbl.x,box.bbl.y,
-             box.btl.x,box.btl.y, box.ftl.x,box.ftl.y, GREEN); //left
+             box.btl.x,box.btl.y, box.ftl.x,box.ftl.y, RED); //left
     if (x<0)
         quad(box.ftr.x,box.ftr.y, box.btr.x,box.btr.y,
-             box.bbr.x,box.bbr.y, box.fbr.x,box.fbr.y, GREEN); //right
+             box.bbr.x,box.bbr.y, box.fbr.x,box.fbr.y, RED); //right
     if (y>0)
         quad(box.fbl.x,box.fbl.y, box.fbr.x,box.fbr.y,
-             box.bbr.x,box.bbr.y, box.bbl.x,box.bbl.y, GREEN); //up
+             box.bbr.x,box.bbr.y, box.bbl.x,box.bbl.y, BLUE); //up
 
     // top/front face — always white
     update_audio();
@@ -1565,9 +1565,9 @@ int hits_wall(int m, int px, int py) {
 	//obtain 3d bounds
 	int r = BALL_SIZE/2+1;
 	int minBallX = cx-(r-ldamp);
-	int minBallY = cy-(r-ddamp);
+	int minBallY = cy-(r-udamp);
 	int maxBallX = cx+(r-rdamp);
-	int maxBallY = cy+(r-udamp);
+	int maxBallY = cy+(r-ddamp);
 	
 	//for each of the 9 surrounding tiles:
 	for (int i = -1; i <=1; i++){
