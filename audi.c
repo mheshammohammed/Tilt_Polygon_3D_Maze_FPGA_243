@@ -1538,7 +1538,7 @@ void set_mode(int new_mode, int *cm, int *px, int *py) {
 // collision / detection
 // ────────────────────────────────────────────────────────────────────────────
 
-#define DAMP_VALUE 2
+#define DAMP_VALUE 1
 
 // check all 4 corners of the 8x8 ball bounding box for wall overlap
 int hits_wall(int m, int px, int py) {
