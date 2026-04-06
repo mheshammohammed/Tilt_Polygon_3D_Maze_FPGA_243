@@ -843,11 +843,11 @@ int main(void) {
             plot_logo();
             //plot_main_menu();
 			//plot_back();
-			//plot_movement();
-            //plot_diff();
+			plot_movement();
+            plot_diff();
             //updateDodecahedron();
-            plot_scoreboard();
-            plot_score(12, 34);
+            //plot_scoreboard();
+            //plot_score(12, 34);
             theta = (theta + 1) % 360;
             
         } else if (state ==1) {
