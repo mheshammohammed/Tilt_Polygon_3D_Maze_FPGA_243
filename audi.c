@@ -351,6 +351,7 @@ int abs(int x) { return x > 0 ? x : -x; }
 void swap(int *x, int *y) { int t = *x; *x = *y; *y = t; }
 
 void line(int x0, int y0, int x1, int y1, short color) {
+    update_audio();
     int steep = abs(y1-y0) > abs(x1-x0);
     if (steep)  { swap(&x0,&y0); swap(&x1,&y1); }
     if (x0>x1)  { swap(&x0,&x1); swap(&y0,&y1); }
@@ -935,6 +936,7 @@ void drawBox(int x, int y, int z, short color) {
              box.bbr.x,box.bbr.y, box.bbl.x,box.bbl.y, ORANGE);
 
     // top/front face — always white
+    update_audio();
     quad(box.ftl.x,box.ftl.y, box.ftr.x,box.ftr.y,
          box.fbr.x,box.fbr.y, box.fbl.x,box.fbl.y, COL_WALL_CORE);
 
@@ -1910,7 +1912,6 @@ int main(void) {
     while (1) {
         
         update_audio();
-        
         //drawings
         draw_map(cm, prev_tilt);
         draw_target(target_col, target_row, COL_TARGET);
@@ -2238,7 +2239,7 @@ int main(void) {
 
         *(pixel_ctrl + 1) = (int)back_buffer;
         *pixel_ctrl = 1;
-        wait_for_vsync();
+        //wait_for_vsync();
         back_buffer = (back_buffer == Buffer1) ? Buffer2 : Buffer1;
     }
     return 0;
