@@ -922,16 +922,16 @@ void drawBox(int x, int y, int z, short color) {
     update_audio();
     if (y<0)
         quad(box.btl.x,box.btl.y, box.btr.x,box.btr.y,
-             box.ftr.x,box.ftr.y, box.ftl.x,box.ftl.y, COL_WALL_CORE); //bottom 
+             box.ftr.x,box.ftr.y, box.ftl.x,box.ftl.y, GREEN); //bottom 
     if (x>0)
         quad(box.fbl.x,box.fbl.y, box.bbl.x,box.bbl.y,
-             box.btl.x,box.btl.y, box.ftl.x,box.ftl.y, COL_WALL_CORE); //left
+             box.btl.x,box.btl.y, box.ftl.x,box.ftl.y, GREEN); //left
     if (x<0)
         quad(box.ftr.x,box.ftr.y, box.btr.x,box.btr.y,
-             box.bbr.x,box.bbr.y, box.fbr.x,box.fbr.y, COL_WALL_CORE); //right
+             box.bbr.x,box.bbr.y, box.fbr.x,box.fbr.y, GREEN); //right
     if (y>0)
         quad(box.fbl.x,box.fbl.y, box.fbr.x,box.fbr.y,
-             box.bbr.x,box.bbr.y, box.bbl.x,box.bbl.y, COL_WALL_CORE); //up
+             box.bbr.x,box.bbr.y, box.bbl.x,box.bbl.y, GREEN); //up
 
     // top/front face — always white
     update_audio();
