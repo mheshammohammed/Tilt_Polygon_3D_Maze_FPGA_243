@@ -158,7 +158,7 @@ typedef struct {
 
 // How many main-loop iterations to wait before accepting another accel move
 // Prevents the ball from flying across the board on one tilt
-#define ACCEL_MOVE_COOLDOWN 4000
+#define ACCEL_MOVE_COOLDOWN 60
 static int accel_cooldown = 0;
 
 
@@ -1420,9 +1420,6 @@ int check_portal(int px, int py, int *dest_col, int *dest_row) {
 
 
 
-
-
-
 // Different game mode algorithms:
 // 1. Random action: EASY LEVEL KEY0
 int random_action(int m, int ac, int ar) {
@@ -1735,6 +1732,13 @@ void draw_go_letter(int letter, int tx, int ty, short color) {
 
 void show_game_over_screen(void) {
 
+    volatile int *pixel_ctrl = (int *)0xFF203020;
+
+    *(pixel_ctrl+1) = (int)&Buffer2;
+    *pixel_ctrl = 1;
+    while ((*(pixel_ctrl+3) & 0x01) != 0);
+    *(pixel_ctrl+1) = (int)&Buffer1;
+
     // phase 1: expanding rings from center
     short ring_colors[6] = {0x07FF, 0xF81F, 0xFFE0, 0xFD20, 0xF800, 0xFFFF};
     int max_radius = 210;
@@ -1743,15 +1747,31 @@ void show_game_over_screen(void) {
         int band = (r * 6) / max_radius;
         if (band >= 6) band = 5;
         draw_ring(r, ring_colors[band]);
-        go_delay(20000);
+
+        *(pixel_ctrl + 1) = (int)back_buffer;
+        *pixel_ctrl = 1;
+        wait_for_vsync();
+        back_buffer = (back_buffer == Buffer1) ? Buffer2 : Buffer1;
+        update_audio();
+
     }
 
     // fill fully black
-    for (int y = 0; y < 240; y++)
-        for (int x = 0; x < 320; x++)
-            Buffer1[y][x] = 0x0000;
-    go_delay(200000);
+    clear(BLACK);
+    *(pixel_ctrl + 1) = (int)back_buffer;
+    *pixel_ctrl = 1;
+    wait_for_vsync();
+    back_buffer = (back_buffer == Buffer1) ? Buffer2 : Buffer1;
 
+    {int k = 0;
+        while (k<60) {
+            wait_for_vsync();
+            up
+            k++;
+        }
+    
+    }
+    
     // phase 4: letters appear one by one
     int letter_x[8] = {94, 112, 130, 148, 94, 112, 130, 148};
     int letter_y[8] = {85,  85,  85,  85, 105, 105, 105, 105};
@@ -1774,10 +1794,17 @@ void show_game_over_screen(void) {
     }
     draw_rect(90, 165, 140, 6, 0xFFFF);
 
+    *(pixel_ctrl + 1) = (int)back_buffer;
+    *pixel_ctrl = 1;
+    wait_for_vsync();
+    back_buffer = (back_buffer == Buffer1) ? Buffer2 : Buffer1;
+
     // wait for keypress
     volatile int *ps2_ptr = (volatile int *)0xFF200100;
     while (*ps2_ptr & 0x8000) { volatile int dummy = *ps2_ptr; (void)dummy; }
     while (!(*ps2_ptr & 0x8000));
+
+    
 }
 
 
@@ -1906,7 +1933,7 @@ int main(void) {
 
         agent_tick++;
                 
-        if (agent_tick >= 60000) {
+        if (agent_tick >= 60) {
             agent_tick = 0;
 
             // ONLY move agent if a mode is active
@@ -1977,7 +2004,7 @@ int main(void) {
 			justBounced = 0;
 			cyclesSinceBounce = 0;
 		}
-        if (phys_tick >= 8000) {
+        if (phys_tick >= 20) {
             phys_tick = 0;
 
 
@@ -1998,7 +2025,7 @@ int main(void) {
 
             int nx = px, ny = py;
 
-            if(ballSpeed<8)
+            if(ballSpeed<3)
                 ballSpeed++;
                 
             if(prev_tilt == 'u'){
@@ -2014,25 +2041,11 @@ int main(void) {
                 nx-=ballSpeed;
             }
                     
-            draw_target(target_col, target_row, COL_TARGET); // redraw target
-            
-            if (game_mode != MODE_FREE)
-                draw_ball(agent_px, agent_py, COL_AGENT, prev_tilt);
-            
-            draw_ball(px, py, COL_PLAYER, prev_tilt); // draw player
 			
 			
             if (!hits_wall(cm, nx, ny)) {   
-                draw_ball(px, py, BLACK, prev_tilt);                          // erase player
                 px = nx; 
                 py = ny;
-
-                draw_target(target_col, target_row, COL_TARGET); 	// redraw target
-
-                if (game_mode != MODE_FREE)
-                    draw_ball(agent_px, agent_py, COL_AGENT, prev_tilt);
-
-                draw_ball(px, py, COL_PLAYER, prev_tilt);                   // draw player
             } 
 			
             else {
@@ -2254,6 +2267,7 @@ int main(void) {
         if (game_mode != MODE_FREE)
             draw_ball(agent_px, agent_py, COL_AGENT, prev_tilt);
         draw_ball(px, py, COL_PLAYER, prev_tilt);
+        draw_target(target_col, target_row, COL_TARGET); // redraw target
 
 
 
