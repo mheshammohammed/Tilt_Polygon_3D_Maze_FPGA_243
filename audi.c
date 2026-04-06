@@ -1873,28 +1873,23 @@ int main(void) {
     *(pixel_ctrl+1) = (int)&Buffer1;
 
     int cm = 0; // Current map, start at first then be random
-    draw_map(cm, 0);
 
     // player starts at tile (1,1)
     int px = col_to_px(1);
     int py = row_to_py(1);
-
-	draw_ball(px, py, COL_PLAYER, prev_tilt);
 	
     // RL agent starts at tile (2,1), one tile right of player
     agent_px = col_to_px(2);
     agent_py = row_to_py(1);
+    spawn_target(cm, 1, 1);
 	
-	 if (game_mode != MODE_FREE)
-        draw_ball(agent_px, agent_py, COL_AGENT, prev_tilt);
-
-    spawn_target(cm, 1, 1); // Spawns in a non taken space
 
     int e0 = 0, skip = 0; //for ps2 keyboard
     int agent_tick = 0; //how fast to update RL model (speed)
     int phys_tick  = 0;
 
 	int ballSpeed = 0;
+    int sixtyFrameCounter = 0;
 
     timer_hw_init();
 
@@ -1907,14 +1902,28 @@ int main(void) {
 
 
     while (1) {
-        // RL AGENT MOVEMENT
-        update_audio();  
+        
+        //drawings
+        draw_timer(round_timer_sec);
+        plot_score(playerScore, computerScore);
+        plot_scoreboard();
+        plot_logo();
 
-        // TIMER 
-        if (timer_hw_tick()) {
-            round_timer_sec--;
-            draw_timer(round_timer_sec);
+        draw_map(cm, prev_tilt);
+        draw_target(target_col, target_row, COL_TARGET);
+        draw_ball(px, py, COL_PLAYER, prev_tilt);
+        if (game_mode != MODE_FREE)
+            draw_ball(agent_px, agent_py, COL_AGENT, prev_tilt);
 
+        //calculations
+        if (sixtyFrameCounter == 60) {
+            sixtyFrameCounter = 0;
+        } else {sixtyFrameCounter++;}
+
+        //Things that happen once per second
+        if (!sixtyFrameCounter) {
+
+            //Tickdown the timer
             if (round_timer_sec <= 0) {
                 trigger_clip(snd_game_over, snd_game_over_len);
                 
@@ -1929,14 +1938,8 @@ int main(void) {
                 agent_tick = 0;
                 reset_round(&cm, &px, &py);
             }
-        }
 
-        agent_tick++;
-                
-        if (agent_tick >= 60) {
-            agent_tick = 0;
-
-            // ONLY move agent if a mode is active
+            //move agent if a mode is active
             if (game_mode != MODE_FREE) {
 
                 int ac = px_to_col(agent_px);
@@ -1968,20 +1971,6 @@ int main(void) {
                 else if (action == 2) nac--;
                 else if (action == 3) nac++;
 
-                // if in range draw
-                if (nac >= 0 && nac < COLS && nar >= 0 && nar < ROWS && maps[cm][nar][nac] == 0) {
-
-                    draw_ball(agent_px, agent_py, BLACK, prev_tilt);
-
-                    agent_px = col_to_px(nac);
-                    agent_py = row_to_py(nar);
-
-                    draw_target(target_col, target_row, COL_TARGET);
-
-                    if (game_mode != MODE_FREE)
-                        draw_ball(agent_px, agent_py, COL_AGENT, prev_tilt);
-
-                }
 
                 if (reached_target(agent_px, agent_py, target_col, target_row)) {
                     computerScore++;
@@ -1992,38 +1981,10 @@ int main(void) {
                     continue;
                 }
             }
+
         }
 
-
-        // ── PLAYER PHYSICS ────────────────────────────────────────────────
-        phys_tick++;
-		if(justBounced){
-			cyclesSinceBounce++;
-		}
-		if(cyclesSinceBounce == 2){
-			justBounced = 0;
-			cyclesSinceBounce = 0;
-		}
-        if (phys_tick >= 20) {
-            phys_tick = 0;
-
-
-            // advance portal animation
-            if (portal.active) {
-                portal_frame_timer++;
-                if (portal_frame_timer >= PORTAL_ANIM_SPEED) {
-                    portal_frame_timer = 0;
-                    // erase old frame before drawing new one
-                    erase_portals();
-                    portal_frame = (portal_frame + 1) % PORTAL_FRAME_COUNT;
-                    draw_portals();
-                }
-            }
-
-
-
-
-            int nx = px, ny = py;
+         int nx = px, ny = py;
 
             if(ballSpeed<3)
                 ballSpeed++;
@@ -2074,15 +2035,14 @@ int main(void) {
             // Portal teleport check (after moving ball) ────────────────────
             int dest_col, dest_row;
             if (check_portal(px, py, &dest_col, &dest_row)) {
-                draw_ball(px, py, BLACK, prev_tilt);
-                erase_portals();
+        
                 portal.active = 0;
                 portal_spawn_timer = 0;
                 // land the ball in the center of the destination tile
                 px = col_to_px(dest_col);
                 py = row_to_py(dest_row);
                 ballSpeed = 0;   // brief pause after warp feels good
-                draw_ball(px, py, COL_PLAYER, prev_tilt);
+    
             }
 
             if (reached_target(px, py, target_col, target_row)) {
@@ -2095,16 +2055,35 @@ int main(void) {
                 prev_tilt = 'n';
                 dfs_index = dfs_len = 0;
 
-            } 
+            }
+            
+        // ── PLAYER PHYSICS ────────────────────────────────────────────────
+        phys_tick++;
+		if(justBounced){
+			cyclesSinceBounce++;
+		}
+		if(cyclesSinceBounce == 2){
+			justBounced = 0;
+			cyclesSinceBounce = 0;
+		}
+        if (phys_tick >= 20) {
+            phys_tick = 0;
 
-
+            // advance portal animation
+            if (portal.active) {
+                portal_frame_timer++;
+                if (portal_frame_timer >= PORTAL_ANIM_SPEED) {
+                    portal_frame_timer = 0;
+                    // erase old frame before drawing new one
+                    erase_portals();
+                    portal_frame = (portal_frame + 1) % PORTAL_FRAME_COUNT;
+                    draw_portals();
+                }
+            }
         }
-			
-
+		
         // ── ACCELEROMETER INPUT ───────────────────────────────────────────
-        if (accel_cooldown > 0) {
-            accel_cooldown--;
-        } else {
+        if (!sixtyFrameCounter) {
             unsigned char abuf[6];
             mpu_read_regs(gpio, REG_ACCEL_X_H, abuf, 6);
             short ax = -(short)((abuf[0] << 8) | abuf[1]);
@@ -2127,28 +2106,12 @@ int main(void) {
                     else        { new_tilt = 'u'; ny-=5; }
                 }
 
-                // Redraw map if tilt direction changed (for 3D effect)
-                if (new_tilt != prev_tilt) {
-                    prev_tilt = new_tilt;
-                    draw_map(cm, prev_tilt);
-                    draw_target(target_col, target_row, COL_TARGET);
-                    if (game_mode != MODE_FREE)
-                        draw_ball(agent_px, agent_py, COL_AGENT, prev_tilt);
-                    draw_ball(px, py, COL_PLAYER, prev_tilt);
-                }
 
                 // Move ball one tile if not hitting a wall
                 if (!hits_wall(cm, nx, ny)) {
-                    draw_ball(px, py, BLACK, prev_tilt);
                     px = nx;
                     py = ny;
-                    draw_target(target_col, target_row, COL_TARGET);
-                    if (game_mode != MODE_FREE)
-                        draw_ball(agent_px, agent_py, COL_AGENT, prev_tilt);
-                    draw_ball(px, py, COL_PLAYER, prev_tilt);
                 }
-
-                accel_cooldown = ACCEL_MOVE_COOLDOWN;
             }
         }
         // ── END ACCELEROMETER INPUT ───────────────────────────────────────
@@ -2262,13 +2225,6 @@ int main(void) {
 				} 
             }
         }
-
-        draw_map(cm, prev_tilt);
-        if (game_mode != MODE_FREE)
-            draw_ball(agent_px, agent_py, COL_AGENT, prev_tilt);
-        draw_ball(px, py, COL_PLAYER, prev_tilt);
-        draw_target(target_col, target_row, COL_TARGET); // redraw target
-
 
 
         *(pixel_ctrl + 1) = (int)back_buffer;
