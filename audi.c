@@ -75,6 +75,11 @@ int dfs_path[MAX_PATH];
 int dfs_len = 0;
 int dfs_index = 0;
 
+//State 0: Main Menu
+//State 1: Game
+//State 2: How to play
+//State 3: Game Over
+int gameState = 0;
 
 
 // hardware interval timer at 0xFF202000
@@ -1831,6 +1836,7 @@ void show_game_over_screen(void) {
     volatile int *ps2_ptr = (volatile int *)0xFF200100;
     while (*ps2_ptr & 0x8000) { volatile int dummy = *ps2_ptr; (void)dummy; }
     while (!(*ps2_ptr & 0x8000));
+    gameState = 0;
 
     
 }
@@ -1927,12 +1933,6 @@ int main(void) {
     gpio->DATA &= ~((1 << SCL_PIN) | (1 << SDA_PIN));
     mpu_write_reg(gpio, REG_PWR_MGMT, 0x00);  // wake up
     mpu_write_reg(gpio, 0x1A, 0x03);           // low-pass filter
-
-    //State 0: Main Menu
-    //State 1: Game
-    //State 2: How to play
-    //State 3: Game Over
-    int gameState = 0;
 
     while (1) {
         update_audio();
