@@ -2041,31 +2041,6 @@ void show_game_over_screen(void) {
         }
     
     }
-    
-
-    /*
-    // phase 4: letters appear one by one
-    int letter_x[8] = {94, 112, 130, 148, 94, 112, 130, 148};
-    int letter_y[8] = {85,  85,  85,  85, 105, 105, 105, 105};
-    short letter_colors[8] = {
-        0x07FF, 0xF81F, 0xFFE0, 0xFD20,   // G A M E
-        0xF800, 0x07FF, 0xF81F, 0xFFE0    // O V E R
-    };
-
-    for (int i = 0; i < 8; i++) {
-        draw_go_letter(i, letter_x[i], letter_y[i], letter_colors[i]);
-        go_delay(40000);
-    }
-
-    // blinking press any key bar
-    for (int blink = 0; blink < 6; blink++) {
-        draw_rect(90, 165, 140, 6, 0xFFFF);
-        go_delay(500000);
-        draw_rect(90, 165, 140, 6, 0x0000);
-        go_delay(500000);
-    }
-    draw_rect(90, 165, 140, 6, 0xFFFF);
-    */
 
     // wait for keypress
     int blink = 0;
@@ -2080,7 +2055,7 @@ void show_game_over_screen(void) {
 
         if (blink) {
             for(int y = 150; y < 200; y++){
-                for(int x = 140; x < 180; x++){
+                for(int x = 130; x < 180; x++){
                     plot_pixel(x,y,BLACK);
                 }
             }
