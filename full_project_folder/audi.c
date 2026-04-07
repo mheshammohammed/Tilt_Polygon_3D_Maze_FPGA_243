@@ -43,6 +43,7 @@ void compute_dfs_path(int m, int ac, int ar);
 #define YELLOW 0xFFE0
 #define CYAN 0x07FF
 #define ORANGE 0xFD20
+#define PURPLE 0xF81F
 
 #define COL_BG 0x0000   // black background
 
@@ -87,7 +88,7 @@ int gameState = 0;
 // runs at 100MHz so 100,000,000 ticks = 1 second
 // we set it to fire every 1 second directly
 #define TIMER_BASE       0xFF202000
-#define TIMER_TICKS_1SEC 100000000   // 100MHz * 1 second
+#define TIMER_TICKS_1SEC 50000000   // 100MHz * 1 second
 
 void timer_hw_init(void) {
     volatile int *timer = (int *) TIMER_BASE;
@@ -108,14 +109,14 @@ int timer_hw_tick(void) {
 
 
 // round timer globals — must be declared before draw_map, reset_round, and main
-#define ROUND_TIME_SEC  30
+#define ROUND_TIME_SEC  60
 int round_timer_sec  = ROUND_TIME_SEC;
 
 // only needed if you kept the software timer fallback, remove if using hardware timer
 int timer_tick_count = 0;
 
 // position for timer display on screen — top right area
-#define TIMER_X  280
+#define TIMER_X  290
 #define TIMER_Y   20
 
 
@@ -624,7 +625,7 @@ void plot_pause() {
 }
 
 #define LOGO_PX_SIZE 1
-#define LOGO_X 280
+#define LOGO_X 285
 #define LOGO_Y 195
 	
 int logo[28][34] = {
@@ -822,6 +823,63 @@ int difficulty[43][67] = {
 void plot_diff() {
 	short colors[] = {BLACK, WHITE, GREEN};
 	plot_picture(difficulty, 43, 67, DIFF_X, DIFF_Y, HELP_PX_SIZE, colors);
+}
+
+
+#define GAME_OVER_PX_SIZE 3
+#define GAME_OVER_X 95
+#define GAME_OVER_Y 50
+
+
+int game_over[43][42] = {
+    {0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {1,1,1,1,1,1,1,1,0,0,0,0,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,2,0,0,3,3,3,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0,0},
+    {1,1,1,0,0,0,0,0,0,0,0,2,2,2,0,0,0,2,2,2,0,0,3,3,3,3,0,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0},
+    {1,1,1,0,0,1,1,1,1,0,0,2,2,2,0,0,0,2,2,2,0,0,3,3,3,3,3,3,3,3,3,0,0,4,4,4,4,4,4,4,4,4},
+    {1,1,1,0,0,0,1,1,1,0,0,2,2,2,0,0,0,2,2,2,0,0,3,3,3,3,3,3,3,3,3,0,0,4,4,4,4,4,4,4,4,4},
+    {1,1,1,0,0,0,1,1,1,0,0,2,2,2,2,2,2,2,2,2,0,0,3,3,3,3,3,3,3,3,3,0,0,4,4,4,4,4,4,4,4,4},
+    {1,1,1,1,1,1,1,1,1,0,0,2,2,2,2,2,2,2,2,2,0,0,3,3,3,0,3,0,3,3,3,0,0,4,4,4,0,0,0,0,0,0},
+    {1,1,1,1,1,1,1,1,1,0,0,2,2,2,0,0,0,2,2,2,0,0,3,3,3,0,0,0,3,3,3,0,0,4,4,4,0,0,0,0,0,0},
+    {0,1,1,1,1,1,1,1,0,0,0,2,2,2,0,0,0,2,2,2,0,0,3,3,3,0,0,0,3,3,3,0,0,4,4,4,4,4,4,4,4,0},
+    {0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,2,2,2,0,0,3,3,3,0,0,0,3,3,3,0,0,4,4,4,4,4,4,4,4,0},
+    {0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,2,2,2,0,0,3,3,3,0,0,0,3,3,3,0,0,4,4,4,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0,3,3,3,0,0,4,4,4,0,0,0,0,0,0},
+    {0,5,5,5,5,5,5,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0,3,3,3,0,0,4,4,4,4,4,4,4,4,4},
+    {5,5,5,5,5,5,5,5,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,4,4,4,4},
+    {5,5,5,5,5,5,5,5,5,0,0,1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,4,4,4,4},
+    {5,5,5,0,0,0,5,5,5,0,0,1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {5,5,5,0,0,0,5,5,5,0,0,1,1,1,0,0,0,1,1,1,0,0,2,2,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0},
+    {5,5,5,0,0,0,5,5,5,0,0,1,1,1,1,0,1,1,1,1,0,0,2,2,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0},
+    {5,5,5,0,0,0,5,5,5,0,0,1,1,1,1,0,1,1,1,1,0,0,2,2,2,2,2,2,2,2,2,0,0,3,3,3,3,3,3,3,3,0},
+    {5,5,5,0,0,0,5,5,5,0,0,0,1,1,1,0,1,1,1,0,0,0,2,2,2,0,0,0,0,0,0,0,0,3,3,3,3,3,3,3,3,3},
+    {5,5,5,0,0,0,5,5,5,0,0,0,1,1,1,0,1,1,1,0,0,0,2,2,2,0,0,0,0,0,0,0,0,3,3,3,3,3,3,3,3,3},
+    {5,5,5,5,5,5,5,5,5,0,0,0,0,1,1,1,1,1,0,0,0,0,2,2,2,2,2,2,2,2,0,0,0,3,3,3,0,0,0,3,3,3},
+    {5,5,5,5,5,5,5,5,5,0,0,0,0,1,1,1,1,1,0,0,0,0,2,2,2,2,2,2,2,2,0,0,0,3,3,3,0,0,0,3,3,3},
+    {0,5,5,5,5,5,5,5,0,0,0,0,0,1,1,1,1,1,0,0,0,0,2,2,2,0,0,0,0,0,0,0,0,3,3,3,3,3,3,3,3,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,2,2,2,0,0,0,0,0,0,0,0,3,3,3,3,3,3,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,2,2,2,2,2,2,2,2,2,0,0,3,3,3,3,3,3,3,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,2,0,0,3,3,3,0,3,3,3,3,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,2,0,0,3,3,3,0,0,3,3,3,3},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0,3,3,3},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0,3,3,3},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,6,6,0,0,0,0,0,0,0,0,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,6,6,0,0,0,0,0,0,6,6,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,6,6,0,0,0,0,0,0,6,6,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,6,6,6,6,6,6,6,6,6,6,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,6,6,6,6,6,6,6,6,6,6,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,6,6,0,0,0,0,0,0,0,0,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+};
+
+void plot_game_over() {
+    short colors[] = {BLACK, CYAN, PURPLE, YELLOW, ORANGE, RED, WHITE};	
+    plot_picture(game_over, 43, 42, GAME_OVER_X, GAME_OVER_Y, GAME_OVER_PX_SIZE, colors);
 }
 
 
@@ -1155,7 +1213,8 @@ void draw_wall_tile(int col, int row, char tilt) {
 
 void draw_timer(int seconds) {
     // erase old timer area first
-    draw_rect(TIMER_X, TIMER_Y, 16, 12, BLACK);
+   // draw_rect(TIMER_X, TIMER_Y, 16, 12, BLACK);
+   seconds = seconds/2;
 
     short colors[] = {BLACK, WHITE};
     int d1 = seconds / 10;   // tens digit
@@ -1480,7 +1539,7 @@ typedef struct {
 
 Portal portal = {0};
 int portal_spawn_timer = 0;
-#define PORTAL_SPAWN_INTERVAL 600  // ticks between spawns
+#define PORTAL_SPAWN_INTERVAL 200  // ticks between spawns
 
 
 void draw_portal(int col, int row, short color) {
@@ -1947,7 +2006,6 @@ void draw_go_letter(int letter, int tx, int ty, short color) {
 void show_game_over_screen(void) {
 
     volatile int *pixel_ctrl = (int *)0xFF203020;
-
     *(pixel_ctrl+1) = (int)&Buffer2;
     *pixel_ctrl = 1;
     while ((*(pixel_ctrl+3) & 0x01) != 0);
@@ -1957,7 +2015,7 @@ void show_game_over_screen(void) {
     short ring_colors[6] = {0x07FF, 0xF81F, 0xFFE0, 0xFD20, 0xF800, 0xFFFF};
     int max_radius = 210;
 
-    for (int r = 0; r <= max_radius; r += 3) {
+    for (int r = 0; r <= max_radius; r += 5) {
         int band = (r * 6) / max_radius;
         if (band >= 6) band = 5;
         draw_ring(r, ring_colors[band]);
@@ -1971,52 +2029,51 @@ void show_game_over_screen(void) {
     }
 
     // fill fully black
-    clear(BLACK);
-    *(pixel_ctrl + 1) = (int)back_buffer;
-    *pixel_ctrl = 1;
-    wait_for_vsync();
-    back_buffer = (back_buffer == Buffer1) ? Buffer2 : Buffer1;
-
     {int k = 0;
-        while (k<60) {
+        while (k<10) {
+            clear(BLACK);
+            *(pixel_ctrl + 1) = (int)back_buffer;
+            *pixel_ctrl = 1;
+            back_buffer = (back_buffer == Buffer1) ? Buffer2 : Buffer1;
             wait_for_vsync();
             update_audio();
             k++;
         }
     
     }
-    
-    // phase 4: letters appear one by one
-    int letter_x[8] = {94, 112, 130, 148, 94, 112, 130, 148};
-    int letter_y[8] = {85,  85,  85,  85, 105, 105, 105, 105};
-    short letter_colors[8] = {
-        0x07FF, 0xF81F, 0xFFE0, 0xFD20,   // G A M E
-        0xF800, 0x07FF, 0xF81F, 0xFFE0    // O V E R
-    };
-
-    for (int i = 0; i < 8; i++) {
-        draw_go_letter(i, letter_x[i], letter_y[i], letter_colors[i]);
-        go_delay(40000);
-    }
-
-    // blinking press any key bar
-    for (int blink = 0; blink < 6; blink++) {
-        draw_rect(90, 165, 140, 6, 0xFFFF);
-        go_delay(500000);
-        draw_rect(90, 165, 140, 6, 0x0000);
-        go_delay(500000);
-    }
-    draw_rect(90, 165, 140, 6, 0xFFFF);
-
-    *(pixel_ctrl + 1) = (int)back_buffer;
-    *pixel_ctrl = 1;
-    wait_for_vsync();
-    back_buffer = (back_buffer == Buffer1) ? Buffer2 : Buffer1;
 
     // wait for keypress
+    int blink = 0;
+
     volatile int *ps2_ptr = (volatile int *)0xFF200100;
-    while (*ps2_ptr & 0x8000) { volatile int dummy = *ps2_ptr; (void)dummy; }
-    while (!(*ps2_ptr & 0x8000));
+    while (*ps2_ptr & 0x8000) { 
+        volatile int dummy = *ps2_ptr; 
+        (void)dummy; 
+    }
+    while (!(*ps2_ptr & 0x8000)){
+        plot_game_over();
+
+        if (blink) {
+            for(int y = 150; y < 200; y++){
+                for(int x = 130; x < 180; x++){
+                    plot_pixel(x,y,BLACK);
+                }
+            }
+        }
+
+        if(timer_hw_tick()){
+            if(blink==0) blink++;
+            else if(blink == 1)blink--;
+        }
+
+
+
+        *(pixel_ctrl + 1) = (int)back_buffer;
+        *pixel_ctrl = 1;
+        wait_for_vsync();
+        back_buffer = (back_buffer == Buffer1) ? Buffer2 : Buffer1;
+
+    }
     gameState = 0;
 
     
@@ -2052,10 +2109,15 @@ void draw_map(int m, char tilt) {
 // ────────────────────────────────────────────────────────────────────────────
 // round reset — pick new map, place both balls, spawn target
 // ────────────────────────────────────────────────────────────────────────────
+int justBounced = 0;
+int cyclesSinceBounce;
 
 void reset_round(int *cm, int *px, int *py) {
     round_timer_sec  = ROUND_TIME_SEC; 
     timer_tick_count = 0; 
+
+    erase_portals();
+    portal.active = 0;
 
     *cm = rand() % NUM_MAPS;
     draw_map(*cm, 'n');
@@ -2073,14 +2135,14 @@ void reset_round(int *cm, int *px, int *py) {
     spawn_target(*cm, 1, 1);
 	prev_tilt = 'u';
 
+    justBounced = 0;
+    cyclesSinceBounce = 0;
+
 }
 
 // ────────────────────────────────────────────────────────────────────────────
 // main game loop
 // ────────────────────────────────────────────────────────────────────────────
-
-int justBounced = 0;
-int cyclesSinceBounce;
 
 int main(void) {
     volatile int *pixel_ctrl = (int *)0xFF203020;
@@ -2128,7 +2190,7 @@ int main(void) {
             theta = (theta + 1) % 360;
             plot_logo();
         }
-        if (gameState==1) { //GAME
+        else if (gameState==1) { //GAME
             //drawings
             draw_map(cm, prev_tilt);
             draw_target(target_col, target_row, COL_TARGET);
@@ -2154,6 +2216,7 @@ int main(void) {
                     prev_tilt  = 'n';
                     agent_tick = 0;
                     reset_round(&cm, &px, &py);
+                    continue;
                 }
 
                 //move agent if a mode is active
@@ -2261,9 +2324,9 @@ int main(void) {
                 playerScore++;
                 trigger_clip(snd_target, snd_target_len);
 
-                ballSpeed=0;
                 reset_round(&cm, &px, &py);
                 agent_tick = 0;
+                ballSpeed=0;
                 prev_tilt = 'n';
                 dfs_index = dfs_len = 0;
 
@@ -2274,6 +2337,8 @@ int main(void) {
                 trigger_clip(snd_target, snd_target_len);  
 
                 reset_round(&cm, &px, &py);
+                ballSpeed=0;
+                prev_tilt = 'n';
                 dfs_index = dfs_len = 0; // reset DFS state
                 continue;
             }
@@ -2343,10 +2408,10 @@ int main(void) {
             // ── END ACCELEROMETER INPUT ───────────────────────────────────────
 
         }
-        if (gameState==2) {
+        else if (gameState==2) {
             plot_pause();
         }
-        if (gameState==3) {
+        else if (gameState==3) {
             clear(BLACK);
             plot_logo();
             plot_movement();
