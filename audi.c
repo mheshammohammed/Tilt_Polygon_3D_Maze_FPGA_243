@@ -108,14 +108,14 @@ int timer_hw_tick(void) {
 
 
 // round timer globals — must be declared before draw_map, reset_round, and main
-#define ROUND_TIME_SEC  30
+#define ROUND_TIME_SEC  10
 int round_timer_sec  = ROUND_TIME_SEC;
 
 // only needed if you kept the software timer fallback, remove if using hardware timer
 int timer_tick_count = 0;
 
 // position for timer display on screen — top right area
-#define TIMER_X  280
+#define TIMER_X  290
 #define TIMER_Y   20
 
 
@@ -624,7 +624,7 @@ void plot_pause() {
 }
 
 #define LOGO_PX_SIZE 1
-#define LOGO_X 280
+#define LOGO_X 290
 #define LOGO_Y 195
 	
 int logo[28][34] = {
@@ -1155,7 +1155,7 @@ void draw_wall_tile(int col, int row, char tilt) {
 
 void draw_timer(int seconds) {
     // erase old timer area first
-    draw_rect(TIMER_X, TIMER_Y, 16, 12, BLACK);
+   // draw_rect(TIMER_X, TIMER_Y, 16, 12, BLACK);
 
     short colors[] = {BLACK, WHITE};
     int d1 = seconds / 10;   // tens digit
