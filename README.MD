@@ -5,3 +5,6 @@ code_archive contains snippets of random code and alternate versions of various 
 List of files in full_project_folder:
 
     (Descriptions TBA)
+![alt text](image.png)
+![alt text](image-1.png)
+![alt text](image-2.png)
