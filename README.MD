@@ -1,3 +1,5 @@
+https://www.linkedin.com/feed/update/urn:li:activity:7447683734511861760/
+
 full_project_folder contains all files necessary for compilation. It is the actual project.
 
 code_archive contains snippets of random code and alternate versions of various functions and features.
